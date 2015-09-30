@@ -178,7 +178,11 @@ static void Vector_checkArraySize(Vector* this) {
    if (this->items >= this->arraySize) {
       //int i;
       //i = this->arraySize;
-      this->arraySize = this->items + this->growthRate;
+      if (this->arraySize < this->growthRate) {
+         this->arraySize = this->items + this->growthRate;
+      } else {
+         this->arraySize *= 2;
+      }
       this->array = (Object**) realloc(this->array, sizeof(Object*) * this->arraySize);
       //for (; i < this->arraySize; i++)
       //   this->array[i] = NULL;
