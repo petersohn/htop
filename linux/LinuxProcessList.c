@@ -79,6 +79,48 @@ typedef struct LinuxProcessList_ {
 #endif
 
 }*/
+
+static long myStrtol(char** ptr) {
+   long result = 0;
+   long sign = 1;
+   if (**ptr == '-') {
+      sign = -1;
+      ++*ptr;
+   }
+   if (**ptr == '+') {
+      ++*ptr;
+   }
+   while (**ptr >= '0' && **ptr <= '9') {
+      result *= 10;
+      result += **ptr - '0';
+      ++*ptr;
+   }
+
+   return result * sign;
+}
+
+static unsigned long myStrtoul(char** ptr) {
+   unsigned long result = 0;
+   while (**ptr >= '0' && **ptr <= '9') {
+      result *= 10;
+      result += **ptr - '0';
+      ++*ptr;
+   }
+
+   return result;
+}
+
+static unsigned long long myStrtoull(char** ptr) {
+   unsigned long long result = 0;
+   while (**ptr >= '0' && **ptr <= '9') {
+      result *= 10;
+      result += **ptr - '0';
+      ++*ptr;
+   }
+
+   return result;
+}
+
    
 ProcessList* ProcessList_new(UsersTable* usersTable, Hashtable* pidWhiteList, uid_t userId) {
    LinuxProcessList* this = calloc(1, sizeof(LinuxProcessList));
@@ -171,45 +213,45 @@ static bool LinuxProcessList_readStatFile(Process *process, const char* dirname,
 
    process->state = location[0];
    location += 2;
-   process->ppid = strtol(location, &location, 10);
+   process->ppid = myStrtol(&location);
    location += 1;
-   process->pgrp = strtoul(location, &location, 10);
+   process->pgrp = myStrtoul(&location);
    location += 1;
-   process->session = strtoul(location, &location, 10);
+   process->session = myStrtoul(&location);
    location += 1;
-   process->tty_nr = strtoul(location, &location, 10);
+   process->tty_nr = myStrtoul(&location);
    location += 1;
-   process->tpgid = strtol(location, &location, 10);
+   process->tpgid = myStrtol(&location);
    location += 1;
-   process->flags = strtoul(location, &location, 10);
+   process->flags = myStrtoul(&location);
    location += 1;
-   process->minflt = strtoull(location, &location, 10);
+   process->minflt = myStrtoull(&location);
    location += 1;
-   lp->cminflt = strtoull(location, &location, 10);
+   lp->cminflt = myStrtoull(&location);
    location += 1;
-   process->majflt = strtoull(location, &location, 10);
+   process->majflt = myStrtoull(&location);
    location += 1;
-   lp->cmajflt = strtoull(location, &location, 10);
+   lp->cmajflt = myStrtoull(&location);
    location += 1;
-   lp->utime = LinuxProcess_adjustTime(strtoull(location, &location, 10));
+   lp->utime = LinuxProcess_adjustTime(myStrtoull(&location));
    location += 1;
-   lp->stime = LinuxProcess_adjustTime(strtoull(location, &location, 10));
+   lp->stime = LinuxProcess_adjustTime(myStrtoull(&location));
    location += 1;
-   lp->cutime = LinuxProcess_adjustTime(strtoull(location, &location, 10));
+   lp->cutime = LinuxProcess_adjustTime(myStrtoull(&location));
    location += 1;
-   lp->cstime = LinuxProcess_adjustTime(strtoull(location, &location, 10));
+   lp->cstime = LinuxProcess_adjustTime(myStrtoull(&location));
    location += 1;
-   process->priority = strtol(location, &location, 10);
+   process->priority = myStrtol(&location);
    location += 1;
-   process->nice = strtol(location, &location, 10);
+   process->nice = myStrtol(&location);
    location += 1;
-   process->nlwp = strtol(location, &location, 10);
+   process->nlwp = myStrtol(&location);
    location += 1;
    for (int i=0; i<17; i++) location = strchr(location, ' ')+1;
-   process->exit_signal = strtol(location, &location, 10);
+   process->exit_signal = myStrtol(&location);
    location += 1;
    assert(location != NULL);
-   process->processor = strtol(location, &location, 10);
+   process->processor = myStrtol(&location);
    
    process->time = lp->utime + lp->stime;
 
@@ -313,13 +355,13 @@ static bool LinuxProcessList_readStatmFile(LinuxProcess* process, const char* di
 
    char *p = buf;
    errno = 0;
-   process->super.m_size = strtol(p, &p, 10); if (*p == ' ') p++;
-   process->super.m_resident = strtol(p, &p, 10); if (*p == ' ') p++;
-   process->m_share = strtol(p, &p, 10); if (*p == ' ') p++;
-   process->m_trs = strtol(p, &p, 10); if (*p == ' ') p++;
-   process->m_lrs = strtol(p, &p, 10); if (*p == ' ') p++;
-   process->m_drs = strtol(p, &p, 10); if (*p == ' ') p++;
-   process->m_dt = strtol(p, &p, 10);
+   process->super.m_size = myStrtol(&p); if (*p == ' ') p++;
+   process->super.m_resident = myStrtol(&p); if (*p == ' ') p++;
+   process->m_share = myStrtol(&p); if (*p == ' ') p++;
+   process->m_trs = myStrtol(&p); if (*p == ' ') p++;
+   process->m_lrs = myStrtol(&p); if (*p == ' ') p++;
+   process->m_drs = myStrtol(&p); if (*p == ' ') p++;
+   process->m_dt = myStrtol(&p);
    return (errno == 0);
 }
 
