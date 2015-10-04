@@ -60,7 +60,6 @@ typedef struct LinuxProcessList_ {
 #endif
 
 
-   
 ProcessList* ProcessList_new(UsersTable* usersTable, Hashtable* pidWhiteList, uid_t userId);
 
 void ProcessList_delete(ProcessList* pl);

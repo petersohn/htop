@@ -134,12 +134,6 @@ static void dircpy(char* dest, const char* parent, const char* child, size_t max
    dircat(dest, child, maxSize);
 }
 
-static void dircpy2(char* dest, const char* parent, const char* child1, const char* child2, size_t maxSize) {
-   dircpy(dest, parent, child1, maxSize);
-   dircat(dest, child2, maxSize);
-}
-
-   
 ProcessList* ProcessList_new(UsersTable* usersTable, Hashtable* pidWhiteList, uid_t userId) {
    LinuxProcessList* this = calloc(1, sizeof(LinuxProcessList));
    ProcessList* pl = &(this->super);
@@ -201,10 +195,10 @@ static inline unsigned long long LinuxProcess_adjustTime(unsigned long long t) {
    return (unsigned long long) t * jiffytime * 100;
 }
 
-static bool LinuxProcessList_readStatFile(Process *process, const char* dirname, const char* name, char* command) {
+static bool LinuxProcessList_readStatFile(Process *process, const char* dirname, char* command) {
    LinuxProcess* lp = (LinuxProcess*) process;
    char filename[MAX_NAME+1];
-   dircpy2(filename, dirname, name, "stat", MAX_NAME);
+   dircpy(filename, dirname, "stat", MAX_NAME);
    int fd = open(filename, O_RDONLY);
    if (fd == -1)
       return false;
@@ -277,13 +271,9 @@ static bool LinuxProcessList_readStatFile(Process *process, const char* dirname,
 }
 
 
-static bool LinuxProcessList_statProcessDir(Process* process, const char* dirname, char* name, time_t curTime) {
-   char filename[MAX_NAME+1];
-   filename[MAX_NAME] = '\0';
-
-   dircpy(filename, dirname, name, MAX_NAME);
+static bool LinuxProcessList_statProcessDir(Process* process, const char* dirname, time_t curTime) {
    struct stat sstat;
-   int statok = stat(filename, &sstat);
+   int statok = stat(dirname, &sstat);
    if (statok == -1)
       return false;
    process->st_uid = sstat.st_uid;
@@ -299,11 +289,11 @@ static bool LinuxProcessList_statProcessDir(Process* process, const char* dirnam
 
 #ifdef HAVE_TASKSTATS
 
-static void LinuxProcessList_readIoFile(LinuxProcess* process, const char* dirname, char* name, unsigned long long now) {
+static void LinuxProcessList_readIoFile(LinuxProcess* process, const char* dirname, unsigned long long now) {
    char filename[MAX_NAME+1];
    filename[MAX_NAME] = '\0';
 
-   dircpy2(filename, dirname, name, "io", MAX_NAME);
+   dircpy(filename, dirname, "io", MAX_NAME);
    int fd = open(filename, O_RDONLY);
    if (fd == -1) {
       process->io_rate_read_bps = -1;
@@ -360,9 +350,9 @@ static void LinuxProcessList_readIoFile(LinuxProcess* process, const char* dirna
 
 
 
-static bool LinuxProcessList_readStatmFile(LinuxProcess* process, const char* dirname, const char* name) {
+static bool LinuxProcessList_readStatmFile(LinuxProcess* process, const char* dirname) {
    char filename[MAX_NAME+1];
-   dircpy2(filename, dirname, name, "statm", MAX_NAME);
+   dircpy(filename, dirname, "statm", MAX_NAME);
    int fd = open(filename, O_RDONLY);
    if (fd == -1)
       return false;
@@ -385,14 +375,14 @@ static bool LinuxProcessList_readStatmFile(LinuxProcess* process, const char* di
 
 #ifdef HAVE_OPENVZ
 
-static void LinuxProcessList_readOpenVZData(LinuxProcess* process, const char* dirname, const char* name) {
+static void LinuxProcessList_readOpenVZData(LinuxProcess* process, const char* dirname) {
    if ( (access("/proc/vz", R_OK) != 0)) {
       process->vpid = process->super.pid;
       process->ctid = 0;
       return;
    }
    char filename[MAX_NAME+1];
-   dircpy2(filename, dirname, name, "stat", MAX_NAME);
+   dircpy(filename, dirname, "stat", MAX_NAME);
    FILE* file = fopen(filename, "r");
    if (!file)
       return;
@@ -413,9 +403,9 @@ static void LinuxProcessList_readOpenVZData(LinuxProcess* process, const char* d
 
 #ifdef HAVE_CGROUP
 
-static void LinuxProcessList_readCGroupFile(LinuxProcess* process, const char* dirname, const char* name) {
+static void LinuxProcessList_readCGroupFile(LinuxProcess* process, const char* dirname) {
    char filename[MAX_NAME+1];
-   dircpy2(filename, dirname, name, "cgroup", MAX_NAME);
+   dircpy(filename, dirname, "cgroup", MAX_NAME);
    FILE* file = fopen(filename, "r");
    if (!file) {
       process->cgroup = strdup("");
@@ -448,9 +438,9 @@ static void LinuxProcessList_readCGroupFile(LinuxProcess* process, const char* d
 
 #ifdef HAVE_VSERVER
 
-static void LinuxProcessList_readVServerData(LinuxProcess* process, const char* dirname, const char* name) {
+static void LinuxProcessList_readVServerData(LinuxProcess* process, const char* dirname) {
    char filename[MAX_NAME+1];
-   dircpy2(filename, dirname, name, "status", MAX_NAME);
+   dircpy(filename, dirname, "status", MAX_NAME);
    FILE* file = fopen(filename, "r");
    if (!file)
       return;
@@ -479,9 +469,9 @@ static void LinuxProcessList_readVServerData(LinuxProcess* process, const char* 
 
 #endif
 
-static void LinuxProcessList_readOomData(LinuxProcess* process, const char* dirname, const char* name) {
+static void LinuxProcessList_readOomData(LinuxProcess* process, const char* dirname) {
    char filename[MAX_NAME+1];
-   dircpy2(filename, dirname, name, "oom_score", MAX_NAME);
+   dircpy(filename, dirname, "oom_score", MAX_NAME);
    FILE* file = fopen(filename, "r");
    if (!file)
       return;
@@ -496,12 +486,12 @@ static void LinuxProcessList_readOomData(LinuxProcess* process, const char* dirn
    fclose(file);
 }
 
-static bool LinuxProcessList_readCmdlineFile(Process* process, const char* dirname, const char* name) {
+static bool LinuxProcessList_readCmdlineFile(Process* process, const char* dirname) {
    if (Process_isKernelThread(process))
       return true;
 
    char filename[MAX_NAME+1];
-   dircpy2(filename, dirname, name, "cmdline", MAX_NAME);
+   dircpy(filename, dirname, "cmdline", MAX_NAME);
    int fd = open(filename, O_RDONLY);
    if (fd == -1)
       return false;
@@ -575,23 +565,25 @@ static bool LinuxProcessList_recurseProcTree(LinuxProcessList* this, const char*
       
       LinuxProcess* lp = (LinuxProcess*) proc;
 
+      char processDirname[MAX_NAME+1];
+      dircpy(processDirname, dirname, name, MAX_NAME);
       char subdirname[MAX_NAME+1];
-      dircpy2(subdirname, dirname, name, "task", MAX_NAME);
+      dircpy(subdirname, processDirname, "task", MAX_NAME);
       LinuxProcessList_recurseProcTree(this, subdirname, proc, period, tv);
 
       #ifdef HAVE_TASKSTATS
       if (settings->flags & PROCESS_FLAG_IO)
-         LinuxProcessList_readIoFile(lp, dirname, name, now);
+         LinuxProcessList_readIoFile(lp, processDirname, now);
       #endif
 
-      if (! LinuxProcessList_readStatmFile(lp, dirname, name))
+      if (! LinuxProcessList_readStatmFile(lp, processDirname))
          goto errorReadingProcess;
 
       proc->show = ! ((hideKernelThreads && Process_isKernelThread(proc)) || (hideUserlandThreads && Process_isUserlandThread(proc)));
 
       char command[MAX_NAME+1];
       unsigned long long int lasttimes = (lp->utime + lp->stime);
-      if (! LinuxProcessList_readStatFile(proc, dirname, name, command))
+      if (! LinuxProcessList_readStatFile(proc, processDirname, command))
          goto errorReadingProcess;
       if (settings->flags & PROCESS_FLAG_LINUX_IOPRIO)
          LinuxProcess_updateIOPriority(lp);
@@ -602,31 +594,31 @@ static bool LinuxProcessList_recurseProcTree(LinuxProcessList* this, const char*
 
       if(!preExisting) {
 
-         if (! LinuxProcessList_statProcessDir(proc, dirname, name, curTime))
+         if (! LinuxProcessList_statProcessDir(proc, processDirname, curTime))
             goto errorReadingProcess;
 
          proc->user = UsersTable_getRef(pl->usersTable, proc->st_uid);
 
          #ifdef HAVE_OPENVZ
          if (settings->flags & PROCESS_FLAG_LINUX_OPENVZ) {
-            LinuxProcessList_readOpenVZData(lp, dirname, name);
+            LinuxProcessList_readOpenVZData(lp, processDirname);
          }
          #endif
          
          #ifdef HAVE_VSERVER
          if (settings->flags & PROCESS_FLAG_LINUX_VSERVER) {
-            LinuxProcessList_readVServerData(lp, dirname, name);
+            LinuxProcessList_readVServerData(lp, processDirname);
          }
          #endif
 
-         if (! LinuxProcessList_readCmdlineFile(proc, dirname, name)) {
+         if (! LinuxProcessList_readCmdlineFile(proc, processDirname)) {
             goto errorReadingProcess;
          }
 
          ProcessList_add(pl, proc);
       } else {
          if (settings->updateProcessNames) {
-            if (! LinuxProcessList_readCmdlineFile(proc, dirname, name)) {
+            if (! LinuxProcessList_readCmdlineFile(proc, processDirname)) {
                goto errorReadingProcess;
             }
          }
@@ -634,11 +626,11 @@ static bool LinuxProcessList_recurseProcTree(LinuxProcessList* this, const char*
 
       #ifdef HAVE_CGROUP
       if (settings->flags & PROCESS_FLAG_LINUX_CGROUP)
-         LinuxProcessList_readCGroupFile(lp, dirname, name);
+         LinuxProcessList_readCGroupFile(lp, processDirname);
       #endif
       
       if (settings->flags & PROCESS_FLAG_LINUX_OOM)
-         LinuxProcessList_readOomData(lp, dirname, name);
+         LinuxProcessList_readOomData(lp, processDirname);
 
       if (proc->state == 'Z') {
          free(proc->comm);
@@ -650,7 +642,7 @@ static bool LinuxProcessList_recurseProcTree(LinuxProcessList* this, const char*
             proc->basenameOffset = -1;
             proc->comm = strdup(command);
          } else if (settings->showThreadNames) {
-            if (! LinuxProcessList_readCmdlineFile(proc, dirname, name))
+            if (! LinuxProcessList_readCmdlineFile(proc, processDirname))
                goto errorReadingProcess;
          }
          if (Process_isKernelThread(proc)) {
